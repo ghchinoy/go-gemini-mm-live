@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Example</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0"
+        rel="stylesheet">
+    <script type="importmap">
+      {
+        "imports": {
+          "@material/web/": "https://esm.run/@material/web/"
+        }
+      }
+    </script>
+    <script type="module">
+        import '@material/web/all.js';
+        import { styles as typescaleStyles } from '@material/web/typography/md-typescale-styles.js';
+
+        document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+    </script>
+    <style>
+        :root {
+            --md-sys-typescale-font-family-body-large: Roboto, sans-serif;
+            /* Set Roboto for body-large */
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            font-family: Roboto, sans-serif;
+        }
+
+        #chatbox {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 16px;
+            border: 1px solid lightgray;
+            /* Add a light gray border */
+            border-radius: 4px;
+            /* Add rounded corners */
+        }
+
+        #input-area {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            gap: 8px;
+            /* Add some space between elements */
+        }
+
+        #message {
+            flex-grow: 1;
+        }
+
+        #status {
+            color: gray;
+        }
+
+        #sending-status {
+            font-style: italic;
+            color: gray;
+        }
+
+        #title-bar {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            font-family: var(--md-sys-typescale-font-family-body-large);
+            /* Use body-large font */
+        }
+
+        #title-bar h3 {
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        /* Dark theme styles */
+        [data-md-theme="dark"] {
+            --md-sys-color-primary: #0034ee;
+            /* Example dark primary color */
+            --md-sys-color-on-primary: white;
+            /* Example dark on-primary color */
+            --md-sys-color-surface: #121212;
+            /* Example dark surface color */
+            --md-sys-color-on-surface: white;
+            /* Example dark on-surface color */
+            /* Add more dark theme color overrides as needed */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="title-bar">
+        <h3>WebSocket Chat</h3>
+        <md-icon-button id="theme-toggle" onclick="toggleTheme()">
+            <md-icon>dark_mode</md-icon>
+        </md-icon-button>
+    </div>
+
+    <div id="container">
+        <div id="input-area">
+            <md-outlined-text-field id="message" label="Message"
+                onkeydown="handleKeyPress(event)"></md-outlined-text-field>
+            <md-filled-button onclick="sendMessage()">Send</md-filled-button>
+            <span id="status">Connecting...</span>
+            <span id="sending-status"></span>
+        </div>
+        <div id="chatbox"></div>
+    </div>
+
+    <script>
+        var websocket;
+        var sendingStatusElement = document.getElementById("sending-status");
+        var sendStartTime;
+
+        function connectToWebSocket() {
+            websocket = new WebSocket("ws://localhost:8080/ws");
+            // connection status
+            var statusElement = document.getElementById("status");
+            // timings
+            var sendingStatusElement = document.getElementById("sending-status");
+            //var sendStartTime;
+
+            websocket.onopen = () => {
+                console.log("WebSocket Connected");
+                statusElement.textContent = "Connected";
+                statusElement.style.color = "green";
+            };
+
+            websocket.onclose = () => {
+                console.log("WebSocket Disconnected");
+                statusElement.textContent = "Disconnected";
+                statusElement.style.color = "red";
+
+                // Retry connection after a delay
+                setTimeout(connectToWebSocket, 3000); // Retry every 3 seconds
+            };
+
+            websocket.onmessage = (event) => {
+                var chatbox = document.getElementById("chatbox");
+                var endTime = new Date();
+                var responseTime = endTime - sendStartTime;
+
+                // Display response time in the sendingStatusElement
+                sendingStatusElement.textContent = responseTime + "ms";
+
+                // Display the message in the chatbox
+                var chatbox = document.getElementById("chatbox");
+                chatbox.innerHTML += "<p>" + event.data + "</p>";
+            };
+
+            websocket.onerror = (error) => {
+                console.error("WebSocket Error:", error);
+                statusElement.textContent = "Error";
+                statusElement.style.color = "red";
+            };
+
+
+        }
+
+        function sendMessage() {
+            var message = document.getElementById("message").value;
+            websocket.send(message);
+            document.getElementById("message").value = "";
+            sendingStatusElement.textContent = "Sending...";
+            sendStartTime = new Date();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+
+        function toggleTheme() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const currentTheme = document.documentElement.getAttribute('data-md-theme');
+
+            if (currentTheme === 'light') {
+                document.documentElement.setAttribute('data-md-theme', 'dark');
+                themeToggle.children[0].textContent = 'light_mode';
+            } else {
+                document.documentElement.setAttribute('data-md-theme', 'light');
+                themeToggle.children[0].textContent = 'dark_mode';
+            }
+        }
+
+        connectToWebSocket();
+    </script>
+</body>
+
+</html>
